@@ -1,0 +1,142 @@
+﻿Krešimir Kolac, MEV, 31.05.2017
+izvor: https://docs.microsoft.com/en-us/aspnet/identity/overview/getting-started/aspnet-identity-using-mysql-storage-with-an-entityframework-mysql-provider
+
+-------------------------------------------------------------------------------
+Za prebacivanje baze korisnika sa MSSQLLocalDb na MySQL mijenjali smo sljedeće:
+-------------------------------------------------------------------------------
+
+
+U NuGet Packages Manageru:
+--------------------------
+
+- dodana referenca na MySQL.Data
+- dodana referenca na MySQL.Data.Entity
+- update svih paketa na posljednju verziju
+
+U Web.config:
+-------------
+
+- dodana konekcija na SQL bazu (lokalnu):
+
+<add name="DefaultConnection" connectionString="server=localhost;port=3306;database=demodb;uid=root;" providerName="MySql.Data.MySqlClient" />
+
+- dodan element System.data:
+
+<system.data>
+    <DbProviderFactories>
+      <remove invariant="MySql.Data.MySqlClient" />
+      <add name="MySQL Data Provider" invariant="MySql.Data.MySqlClient" description=".Net Framework Data Provider for MySQL" type="MySql.Data.MySqlClient.MySqlClientFactory, MySql.Data, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d" />
+    </DbProviderFactories>
+  </system.data>
+
+- zamijenjen element <entityFramework> sa:
+
+  <entityFramework>
+  <providers>
+    <provider invariantName="MySql.Data.MySqlClient" type="MySql.Data.MySqlClient.MySqlProviderServices, MySql.Data.Entity.EF6, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d"></provider>
+  </providers>
+</entityFramework>
+
+Dodan razred MySqlHystoryContext:
+---------------------------------
+
+using System.Data.Common;
+using System.Data.Entity;
+using System.Data.Entity.Migrations.History;
+ 
+namespace MySQL_identity_demo.App_Start
+{
+    public class MySqlHistoryContext : HistoryContext
+    {
+        public MySqlHistoryContext(
+          DbConnection existingConnection,
+          string defaultSchema)
+        : base(existingConnection, defaultSchema)
+        {
+        }
+
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<HistoryRow>().Property(h => h.MigrationId).HasMaxLength(100).IsRequired();
+            modelBuilder.Entity<HistoryRow>().Property(h => h.ContextKey).HasMaxLength(200).IsRequired();
+        }
+    }
+}
+
+Dodan razred MySqlConfiguration :
+---------------------------------
+
+using System.Data.Entity;
+ 
+namespace MySQL_identity_demo.App_Start
+{
+    public class MySqlConfiguration : DbConfiguration
+    {
+        public MySqlConfiguration()
+        {
+            SetHistoryContext(
+            "MySql.Data.MySqlClient", (conn, schema) => new MySqlHistoryContext(conn, schema));
+        }
+    }
+}
+
+Dodan razred MySqlInitializer:
+------------------------------
+using MySQL_identity_demo.Models;
+using System.Data.Entity;
+using System.Data.Entity.Infrastructure;
+using System.Linq;
+
+namespace MySQL_identity_demo.App_Start
+{
+    public class MySqlInitializer : IDatabaseInitializer<ApplicationDbContext>
+    {
+        public void InitializeDatabase(ApplicationDbContext context)
+        {
+            if (!context.Database.Exists())
+            {
+                // if database did not exist before - create it
+                context.Database.Create();
+            }
+            else
+            {
+                // query to check if MigrationHistory table is present in the database 
+                var migrationHistoryTableExists = ((IObjectContextAdapter)context).ObjectContext.ExecuteStoreQuery<int>(
+                string.Format(
+                  "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '{0}' AND table_name = '__MigrationHistory'",
+                  "[Insert your database schema here - such as 'users']"));
+
+                // if MigrationHistory table is not there (which is the case first time we run) - create it
+                if (migrationHistoryTableExists.FirstOrDefault() == 0)
+                {
+                    context.Database.Delete();
+                    context.Database.Create();
+                }
+            }
+        }
+    }
+}
+
+Zamijenjen razred u IdentityModels.cs sa:
+------------------------------------------
+
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    {
+        static ApplicationDbContext()
+        {
+            Database.SetInitializer(new MySqlInitializer());
+        }
+
+        public ApplicationDbContext()
+          : base("DefaultConnection")
+        {
+        }
+
+        public static ApplicationDbContext Create()
+        {
+            return new ApplicationDbContext();
+        }
+    }
+
+
