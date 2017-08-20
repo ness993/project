@@ -104,3 +104,6 @@ C:\Users\kresi_000\Desktop\MySQL_identity_demo\MySQL_identity_demo\bin\Microsoft
 C:\Users\kresi_000\Desktop\MySQL_identity_demo\MySQL_identity_demo\bin\Microsoft.AspNet.Identity.EntityFramework.xml
 C:\Users\kresi_000\Desktop\MySQL_identity_demo\MySQL_identity_demo\obj\Debug\MySQL_identity_demo.dll
 C:\Users\kresi_000\Desktop\MySQL_identity_demo\MySQL_identity_demo\obj\Debug\MySQL_identity_demo.pdb
+C:\Users\nenoh\Documents\Projekt s ekipom\MySQL_identity_demo\obj\Debug\MySQL_identity_demo.csprojResolveAssemblyReference.cache
+C:\Users\nenoh\Documents\Projekt s ekipom\MySQL_identity_demo\obj\Debug\MySQL_identity_demo.dll
+C:\Users\nenoh\Documents\Projekt s ekipom\MySQL_identity_demo\obj\Debug\MySQL_identity_demo.pdb
